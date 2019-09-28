@@ -21,26 +21,25 @@ void WIFIinit() {
   byte tries = 11;
   String _ssid = jsonRead(configSetup, "ssid");
   String _password = jsonRead(configSetup, "password");
-  if (_ssid == "" && _password == "") {
-    WiFi.begin();
-  }
-  else {
+  if (_ssid != "") {
     WiFi.begin(_ssid.c_str(), _password.c_str());
-  }
-  S_log(".", 1, false);
-  // Робимо перевірку підключення до тих пір поки лічильник tries
-  while (--tries && WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Q_log(".");
-  }
-  if (WiFi.status() != WL_CONNECTED) {
-    // Якщо не вдалося підключитися запускаємо в режимі AP
-    StartAPMode();
+    S_log(".", 1, false);
+    // Робимо перевірку підключення до тих пір поки лічильник tries
+    while (--tries && WiFi.status() != WL_CONNECTED) {
+      delay(1000);
+      Q_log(".");
+    }
+    if (WiFi.status() != WL_CONNECTED) {
+      // Якщо не вдалося підключитися запускаємо в режимі AP
+      StartAPMode();
+    } else {
+      Q_log("OK");
+      delay(300);
+      S_log(_ssid.c_str(), 0);
+      S_log("is connected", 1, false);
+    }
   } else {
-    Q_log("OK");
-    delay(300);
-    S_log(_ssid.c_str(), 0);
-    S_log("is connected", 1, false);
+    StartAPMode();
   }
   delay(700);
 }
