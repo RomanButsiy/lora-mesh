@@ -1,10 +1,8 @@
-
 #include <EEPROM.h>
 #include <RHRouter.h>
 #include <RHMesh.h>
 #include <RH_RF95.h>
 #define RH_HAVE_SERIAL
-#define LED 9
 #define N_NODES 4
 
 uint8_t nodeId;
@@ -28,7 +26,6 @@ int freeMem() {
 
 void setup() {
   randomSeed(analogRead(0));
-  pinMode(LED, OUTPUT);
   Serial.begin(115200);
   while (!Serial) ; // Wait for serial port to be available
 
@@ -173,7 +170,7 @@ void loop() {
 
     // listen for incoming messages. Wait a random amount of time before we transmit
     // again to the next node
-    unsigned long nextTransmit = millis() + random(3000, 5000);
+    unsigned long nextTransmit = millis() + random(2000, 3000);
     while (nextTransmit > millis()) {
       int waitTime = nextTransmit - millis();
       uint8_t len = sizeof(buf);
