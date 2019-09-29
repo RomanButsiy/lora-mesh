@@ -29,7 +29,7 @@ io.on('connection', function(client) {
 
 
 var options = {
-  host: 'your-mqtt-server,
+  host: 'your-mqtt-server',
   port: 1883,
   username: 'your-mqtt-username',
   password: 'your-mqtt-password'
