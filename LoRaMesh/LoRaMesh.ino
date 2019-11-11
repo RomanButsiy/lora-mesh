@@ -1,22 +1,26 @@
+#include "DHT.h"
 #include <EEPROM.h>
 #include <RHRouter.h>
 #include <RHMesh.h>
 #include <RH_RF95.h>
 #define RH_HAVE_SERIAL
 #define N_NODES 4
+#define DHTPIN 3 // Вивід підключення давача
 
 uint8_t nodeId;
 uint8_t routes[N_NODES]; // full routing table for mesh
 int16_t rssi[N_NODES]; // signal strength info
 
-// Singleton instance of the radio driver
-RH_RF95 rf95;
+// Singleton instance of the radio manager
+RH_RF95 driver;
 
-// Class to manage message delivery and receipt, using the driver declared above
+// Class to manage message delivery and receipt, using the manager declared above
 RHMesh *manager;
 
 // message buffer
 char buf[RH_MESH_MAX_MESSAGE_LEN];
+
+DHT dht(DHTPIN, DHT11);
 
 int freeMem() {
   extern int __heap_start, *__brkval;
@@ -37,44 +41,23 @@ void setup() {
   }
   Serial.print(F("initializing node "));
 
-  manager = new RHMesh(rf95, nodeId);
+  manager = new RHMesh(driver, nodeId);
 
   if (!manager->init()) {
     Serial.println(F("init failed"));
   } else {
     Serial.println("done");
   }
-  rf95.setTxPower(23, false);
-  rf95.setFrequency(915.0);
-  rf95.setCADTimeout(500);
-
-  // Possible configurations:
-  // Bw125Cr45Sf128 (the chip default)
-  // Bw500Cr45Sf128
-  // Bw31_25Cr48Sf512
-  // Bw125Cr48Sf4096
-
-  // long range configuration requires for on-air time
-  boolean longRange = false;
-  if (longRange) {
-    RH_RF95::ModemConfig modem_config = {
-      0x78, // Reg 0x1D: BW=125kHz, Coding=4/8, Header=explicit
-      0xC4, // Reg 0x1E: Spread=4096chips/symbol, CRC=enable
-      0x08  // Reg 0x26: LowDataRate=On, Agc=Off.  0x0C is LowDataRate=ON, ACG=ON
-    };
-    rf95.setModemRegisters(&modem_config);
-    if (!rf95.setModemConfig(RH_RF95::Bw125Cr48Sf4096)) {
-      Serial.println(F("set config failed"));
-    }
-  }
-
+  driver.setTxPower(23, false);
+  driver.setFrequency(915.0);
+  driver.setCADTimeout(500);
   Serial.println("RF95 ready");
 
   for(uint8_t n=1;n<=N_NODES;n++) {
     routes[n-1] = 0;
     rssi[n-1] = 0;
   }
-
+  dht.begin();
   Serial.print(F("mem = "));
   Serial.println(freeMem());
 }
@@ -139,35 +122,59 @@ void printNodeInfo(uint8_t node, char *s) {
   Serial.println(F("}"));
 }
 
-void loop() {
+void sendDataFromDHT(){
+  getDataFromDHT(buf, RH_MESH_MAX_MESSAGE_LEN);
+  sendAck(1);
+}
 
+bool getDataFromDHT(char *p, size_t len) {
+  int16_t t = dht.readTemperature()*100;
+  uint8_t h = dht.readHumidity();
+  p[0] = '\0';
+    strcat(p, "{\"M\":");
+    strcat(p, "\"DHT11\",\"t\":");
+    sprintf(p+strlen(p), "%d", t);
+    strcat(p, ",");
+    strcat(p, "\"h\":");
+    sprintf(p+strlen(p), "%d", h);
+    strcat(p, "}");
+  return true;
+}
+
+void receiveAckNextHop(uint8_t n) {
+  Serial.println(F(" OK"));
+  // we received an acknowledgement from the next hop for the node we tried to send to.
+  RHRouter::RoutingTableEntry *route = manager->getRouteTo(n);
+  if (route->next_hop != 0) {
+    rssi[route->next_hop-1] = driver.lastRssi();
+  }
+}
+
+void sendAck(uint8_t n) {
+  Serial.print(F("->"));
+  Serial.print(n);
+  Serial.print(F(" :"));
+  Serial.print(buf);
+  if (nodeId == 1) printNodeInfo(nodeId, buf); // debugging
+  // send an acknowledged message to the target node
+  uint8_t error = manager->sendtoWait((uint8_t *)buf, strlen(buf), n);
+  if (error != RH_ROUTER_ERROR_NONE) {
+    Serial.println();
+    Serial.print(F(" ! "));
+    Serial.println(getErrorString(error));
+  } else {
+    receiveAckNextHop(n);
+  }
+}
+
+void loop() {
+    
   for(uint8_t n=1;n<=N_NODES;n++) {
     if (n == nodeId) continue; // self
 
     updateRoutingTable();
     getRouteInfoString(buf, RH_MESH_MAX_MESSAGE_LEN);
-
-    Serial.print(F("->"));
-    Serial.print(n);
-    Serial.print(F(" :"));
-    Serial.print(buf);
-
-    // send an acknowledged message to the target node
-    uint8_t error = manager->sendtoWait((uint8_t *)buf, strlen(buf), n);
-    if (error != RH_ROUTER_ERROR_NONE) {
-      Serial.println();
-      Serial.print(F(" ! "));
-      Serial.println(getErrorString(error));
-    } else {
-      Serial.println(F(" OK"));
-      // we received an acknowledgement from the next hop for the node we tried to send to.
-      RHRouter::RoutingTableEntry *route = manager->getRouteTo(n);
-      if (route->next_hop != 0) {
-        rssi[route->next_hop-1] = rf95.lastRssi();
-      }
-    }
-    if (nodeId == 1) printNodeInfo(nodeId, buf); // debugging
-
+    sendAck(n);
     // listen for incoming messages. Wait a random amount of time before we transmit
     // again to the next node
     unsigned long nextTransmit = millis() + random(2000, 3000);
@@ -185,10 +192,10 @@ void loop() {
         // we received data from node 'from', but it may have actually come from an intermediate node
         RHRouter::RoutingTableEntry *route = manager->getRouteTo(from);
         if (route->next_hop != 0) {
-          rssi[route->next_hop-1] = rf95.lastRssi();
+          rssi[route->next_hop-1] = driver.lastRssi();
         }
       }
     }
   }
-
+  //sendDataFromDHT(); // comment for main and other nodes
 }

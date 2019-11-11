@@ -63,3 +63,83 @@ String writeFile(String fileName, String strings ) {
   configFile.close();
   return "Write sucsses";
 }
+
+// ------------- Створення даних для графіка
+String graf(int datas) {
+  String root = "{}";
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject& json = jsonBuffer.parseObject(root);
+  JsonArray& data = json.createNestedArray("data");
+  data.add(datas);
+  root = "";
+  json.printTo(root);
+  return root;
+}
+// ------------- Створення даних для графіка
+String graf(float datas) {
+  String root = "{}";
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject& json = jsonBuffer.parseObject(root);
+  JsonArray& data = json.createNestedArray("data");
+  data.add(datas);
+  root = "";
+  json.printTo(root);
+  return root;
+}
+// ------------- Створення даних для графіка
+String graf(int datas, int datas1) {
+  String root = "{}";
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject& json = jsonBuffer.parseObject(root);
+  JsonArray& data = json.createNestedArray("data");
+  JsonArray& data1 = json.createNestedArray("data1");
+  data.add(datas);
+  data1.add(datas1);
+  root = "";
+  json.printTo(root);
+  return root;
+}
+// ------------- Створення даних для графіка
+String graf(float datas, float datas1) {
+  String root = "{}";
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject& json = jsonBuffer.parseObject(root);
+  JsonArray& data = json.createNestedArray("data");
+  JsonArray& data1 = json.createNestedArray("data1");
+  data.add(datas);
+  data1.add(datas1);
+  root = "";
+  json.printTo(root);
+  return root;
+}
+// ------------- Створення даних для графіка
+String graf(float datas, float datas1, float datas2) {
+  String root = "{}";
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject& json = jsonBuffer.parseObject(root);
+  // Заполняем поля json
+  JsonArray& data = json.createNestedArray("data");
+  JsonArray& data1 = json.createNestedArray("data1");
+  JsonArray& data2 = json.createNestedArray("data2");
+  data.add(datas);
+  data1.add(datas1);
+  data2.add(datas2);
+  root = "";
+  json.printTo(root);
+  return root;
+}
+// ------------- Створення даних для графіка
+String graf(int datas, int datas1, int datas2) {
+  String root = "{}";
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject& json = jsonBuffer.parseObject(root);
+  JsonArray& data = json.createNestedArray("data");
+  JsonArray& data1 = json.createNestedArray("data1");
+  JsonArray& data2 = json.createNestedArray("data2");
+  data.add(datas);
+  data1.add(datas1);
+  data2.add(datas2);
+  root = "";
+  json.printTo(root);
+  return root;
+}

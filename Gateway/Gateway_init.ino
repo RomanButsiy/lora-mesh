@@ -34,6 +34,7 @@ void gateway_init(void) {
   MQTT_init();
   LANG_init();
   BUTTONS_init();
+  DHT_init();
   S_log("Time Ready!", 0);
   S_log(GetTime().c_str(), 1, false);
   delay(1700);

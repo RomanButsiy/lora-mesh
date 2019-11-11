@@ -45,16 +45,41 @@ void mqtt_listener(void) {
       Serial.setTimeout(100);
       String _serial = Serial.readStringUntil('\n');
       if (_serial.startsWith("node: ")) {
-        char msg[BUFSIZE];
-        int end = _serial.indexOf('\r');
-        if (end > 0) {
-          snprintf (msg, BUFSIZE, _serial.substring(6, end).c_str());
-        } else {
-          snprintf (msg, BUFSIZE, _serial.substring(6).c_str());
+        bool node = (_serial.indexOf("M") == -1);
+        node = node && (_serial.indexOf("r") != -1);
+        node = node && (_serial.indexOf("n") != -1);
+        if (node) {
+          char msg[BUFSIZE];
+          int end = _serial.indexOf('\r');
+          if (end > 0) {
+            snprintf (msg, BUFSIZE, _serial.substring(6, end).c_str());
+          } else {
+            snprintf (msg, BUFSIZE, _serial.substring(6).c_str());
+          }
+          mqtt_client.publish("mesh_gateway/data", msg);
         }
-      mqtt_client.publish("mesh_gateway/data", msg);
+      } else {
+        readDHT(_serial);
       }
     }
+  } else {
+    if (Serial.available()) {
+      Serial.setTimeout(100);
+      String _serial = Serial.readStringUntil('\n');
+      if (!_serial.startsWith("node: ")) {
+        readDHT(_serial);
+      }
+    }
+  }
+}
+
+void readDHT(String &_serial) {
+  // ->1 :{"M":"DHT11","t":2060,"h":66}
+  if (_serial.indexOf("DHT11") != -1) {
+    uint8_t found = _serial.indexOf(':') + 1;
+    _serial = _serial.substring(found);
+    jsonWrite(configJson, "Temperature", jsonReadtoInt(_serial, "t"));
+    jsonWrite(configJson, "Humidity", jsonReadtoInt(_serial, "h"));
   }
 }
 
@@ -76,7 +101,6 @@ bool mqtt_connect() {
       return true;
     } else {
       Q_log(".");
-      delay(1000);
     }
   }
   Q_log("failed!!!");
